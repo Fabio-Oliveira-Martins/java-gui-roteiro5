@@ -1,20 +1,20 @@
 package view.pages;
 
-import model.BookRepository;
+import controller.BookController;
 import view.components.sections.Section;
 import view.components.sections.BooksSection;
 
 import java.util.List;
 
 public class MyLibraryPage extends Page {
-    private final BookRepository repository;
+    private final BookController controller;
 
-    public MyLibraryPage(BookRepository repository) {
-        this.repository = repository;
+    public MyLibraryPage(BookController controller) {
+        this.controller = controller;
     }
 
     @Override
     protected List<Section> createSections() {
-        return List.of(new BooksSection("My Library", repository.findRented(), repository, this::render));
+        return List.of(new BooksSection("My Library", controller.rented(), controller, this::render));
     }
 }

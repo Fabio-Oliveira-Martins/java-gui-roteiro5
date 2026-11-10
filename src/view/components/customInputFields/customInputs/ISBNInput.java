@@ -1,12 +1,13 @@
 package view.components.customInputFields.customInputs;
 
+import model.Isbn;
 import view.themes.Theme;
 import view.themes.ThemeManager;
 
 import javax.swing.*;
 import java.awt.*;
 
-public class ISBNInput extends CustomInput<Long> {
+public class ISBNInput extends CustomInput<String> {
 
     private final JTextField input = new JTextField();
 
@@ -34,20 +35,7 @@ public class ISBNInput extends CustomInput<Long> {
 
     @Override
     public boolean validateInput() {
-        Long value = getValue();
-        int length = String.valueOf(value).length();
-
-        if(value == null || length < 4) {
-            errorStyle();
-            return false;
-        }
-
-        boolean isInvalidLength = length != 13;
-
-        String prefix = String.valueOf(value).substring(0,3);
-        boolean isInvalidPrefix = !prefix.equals("978") && !prefix.equals("979");
-
-        if (isInvalidLength || isInvalidPrefix) {
+        if (!Isbn.isValid(getValue())) { // regra única, centralizada no VO Isbn
             errorStyle();
             return false;
         }
@@ -56,14 +44,9 @@ public class ISBNInput extends CustomInput<Long> {
         return true;
     }
 
-    // Converte direto do texto; null se vazio ou inválido
     @Override
-    public Long getValue() {
-        try {
-            return Long.valueOf(input.getText().trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+    public String getValue() {
+        return input.getText().trim();
     }
 
     @Override

@@ -1,10 +1,8 @@
 package view.components;
 
-import model.Author;
-import model.Book;
-import model.BookRepository;
-import model.Category;
-import persistence.DataAccessException;
+import controller.BookController;
+import controller.Outcome;
+import dto.BookInput;
 import view.components.customButtons.SubmitButton;
 import view.components.customDialogs.statusDialog.ErrorDialog;
 import view.components.customDialogs.statusDialog.SuccessDialog;
@@ -19,7 +17,7 @@ public class BookForm extends JPanel {
     private static final int ROW_GAP = 32;
     private static final int COLUMN_GAP = 16;
 
-    private final BookRepository repository;
+    private final BookController controller;
 
     private final CustomInputField authorField = new CustomInputField("Author", "String", true);
     private final CustomInputField publisherField = new CustomInputField("Publisher", "String", true);
@@ -29,8 +27,8 @@ public class BookForm extends JPanel {
     private final CustomInputField isbnField = new CustomInputField("ISBN (International Standard Book Number)", "ISBN", true);
     private final SubmitButton submitButton = new SubmitButton("Submit");
 
-    public BookForm(BookRepository repository) {
-        this.repository = repository;
+    public BookForm(BookController controller) {
+        this.controller = controller;
 
         setOpaque(false);
         setLayout(new GridBagLayout());
@@ -89,27 +87,23 @@ public class BookForm extends JPanel {
             return;
         }
 
-        Book book = new Book(
+        // A view só coleta os dados; as regras ficam no controlador, no serviço e no domínio
+        BookInput input = new BookInput(
                 (String) titleField.getValue(),
-                new Author((String) authorField.getValue()),
+                (String) authorField.getValue(),
                 (String) publisherField.getValue(),
-                Category.fromActionCommand(categoryField.getValue()),
-                Long.parseLong(String.valueOf(isbnField.getValue())),
-                descriptionField.getValue()
-        );
+                categoryField.getValue(),
+                String.valueOf(isbnField.getValue()),
+                descriptionField.getValue());
 
-        try {
-            if (!repository.add(book)) {
-                ErrorDialog.display(owner, "A book with ISBN " + book.getIsbn() + " already exists");
-                return;
-            }
-        } catch (DataAccessException e) {
-            ErrorDialog.display(owner, e.getMessage()); // mensagem genérica, sem detalhes do banco
+        Outcome outcome = controller.register(input);
+        if (!outcome.success()) {
+            ErrorDialog.display(owner, outcome.message());
             return;
         }
 
         clear();
-        SuccessDialog.display(owner, "Your form was successfully submitted");
+        SuccessDialog.display(owner, outcome.message());
     }
 
     private void clear() {

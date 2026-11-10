@@ -235,7 +235,7 @@ public class BookRepository {
                 new Author(row.getString("author")),
                 row.getString("publisher"),
                 Category.valueOf(row.getString("category")),
-                Long.parseLong(row.getString("isbn")),
+                Isbn.of(row.getString("isbn")),
                 row.getString("description"),
                 row.getBoolean("rented"));
     }

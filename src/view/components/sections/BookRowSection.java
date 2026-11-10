@@ -1,10 +1,9 @@
 package view.components.sections;
 
-import model.Book;
-import model.BookRepository;
+import controller.BookController;
+import dto.BookView;
 import view.components.BookCard;
 import view.components.MutedLabel;
-import view.components.sections.Section;
 import view.components.componentsUtils.CustomScrollBarUI;
 import view.themes.Theme;
 import view.themes.ThemeManager;
@@ -16,22 +15,22 @@ import java.util.List;
 
 public class BookRowSection extends Section {
 
-    private BookRowSection(String title, List<Book> books, BookCard.Size size,
-                           BookRepository repository, Runnable onChange) {
+    private BookRowSection(String title, List<BookView> books, BookCard.Size size,
+                           BookController controller, Runnable onChange) {
         super(title);
         setContent(books.isEmpty()
                 ? new MutedLabel("No books available yet.")
-                : new BookRow(books, size, repository, onChange));
+                : new BookRow(books, size, controller, onChange));
     }
 
-    // Até 5 livros sorteados
-    public static BookRowSection recentlyAdded(BookRepository repository, Runnable onChange) {
-        return new BookRowSection("Recently Added", repository.recent(5), BookCard.Size.LARGE, repository, onChange);
+    // Até 5 livros mais recentes
+    public static BookRowSection recentlyAdded(BookController controller, Runnable onChange) {
+        return new BookRowSection("Recently Added", controller.recent(5), BookCard.Size.LARGE, controller, onChange);
     }
 
     // Até 6 livros sorteados
-    public static BookRowSection suggestion(BookRepository repository, Runnable onChange) {
-        return new BookRowSection("Suggestion", repository.random(6), BookCard.Size.SMALL, repository, onChange);
+    public static BookRowSection suggestion(BookController controller, Runnable onChange) {
+        return new BookRowSection("Suggestion", controller.suggestions(6), BookCard.Size.SMALL, controller, onChange);
     }
 }
 
@@ -43,8 +42,8 @@ class BookRow extends JScrollPane implements Themeable {
     private final int count;
     private int lastHeight = -1;
 
-    public BookRow(List<Book> books, BookCard.Size size, BookRepository repository, Runnable onChange) {
-        super(new Row(books, size, repository, onChange),
+    public BookRow(List<BookView> books, BookCard.Size size, BookController controller, Runnable onChange) {
+        super(new Row(books, size, controller, onChange),
                 VERTICAL_SCROLLBAR_NEVER, HORIZONTAL_SCROLLBAR_AS_NEEDED);
         this.size = size;
         this.count = books.size();
@@ -97,12 +96,12 @@ class BookRow extends JScrollPane implements Themeable {
     private static class Row extends JPanel implements Scrollable {
         private final BookCard.Size size;
 
-        Row(List<Book> books, BookCard.Size size, BookRepository repository, Runnable onChange) {
+        Row(List<BookView> books, BookCard.Size size, BookController controller, Runnable onChange) {
             this.size = size;
             setOpaque(false);
             setLayout(null);
-            for (Book book : books) {
-                add(new BookCard(book, size, repository, onChange));
+            for (BookView book : books) {
+                add(new BookCard(book, size, controller, onChange));
             }
         }
 
@@ -137,7 +136,7 @@ class BookRow extends JScrollPane implements Themeable {
             return getParent() instanceof JViewport v && v.getWidth() >= getPreferredSize().width;
         }
 
-        // Altura acompanha o viewport (corrige as capas cortadas em tela cheia)
+        // Altura acompanha o viewport
         @Override
         public boolean getScrollableTracksViewportHeight() {
             return true;

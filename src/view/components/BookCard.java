@@ -1,10 +1,8 @@
 package view.components;
 
-import model.Book;
-import model.BookRepository;
-import persistence.DataAccessException;
+import controller.BookController;
+import dto.BookView;
 import view.components.customDialogs.BookDetailsDialog;
-import view.components.customDialogs.statusDialog.ErrorDialog;
 import view.themes.Theme;
 import view.themes.ThemeManager;
 import view.themes.Themeable;
@@ -38,7 +36,7 @@ public class BookCard extends JButton implements Themeable {
     private final JLabel titleLabel = new JLabel("", SwingConstants.CENTER);
     private final JLabel authorLabel = new JLabel("", SwingConstants.CENTER);
 
-    public BookCard(Book book, Size size, BookRepository repository, Runnable onChange) {
+    public BookCard(BookView book, Size size, BookController controller, Runnable onChange) {
         this.size = size;
 
         setLayout(new BorderLayout(0, 6));
@@ -48,9 +46,9 @@ public class BookCard extends JButton implements Themeable {
         setFocusPainted(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        titleLabel.setText(book.getTitle());
+        titleLabel.setText(book.title());
         titleLabel.setFont(TITLE_FONT);
-        authorLabel.setText(book.getAuthor().getName());
+        authorLabel.setText(book.author());
         authorLabel.setFont(AUTHOR_FONT);
 
         JPanel text = new JPanel(new GridLayout(2, 1));
@@ -61,14 +59,8 @@ public class BookCard extends JButton implements Themeable {
         add(new BookCover(size.coverColor), BorderLayout.CENTER);
         add(text, BorderLayout.SOUTH);
 
-        addActionListener(e -> {
-            Window window = SwingUtilities.getWindowAncestor(this);
-            try {
-                new BookDetailsDialog(window, book, repository, onChange).open();
-            } catch (DataAccessException ex) {
-                ErrorDialog.display(window, ex.getMessage());
-            }
-        });
+        addActionListener(e -> new BookDetailsDialog(
+                SwingUtilities.getWindowAncestor(this), book, controller, onChange).open());
 
         applyTheme(ThemeManager.current());
     }

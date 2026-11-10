@@ -1,8 +1,8 @@
 package view.components.customDialogs;
 
-import model.Book;
-import model.BookRepository;
-import persistence.DataAccessException;
+import controller.BookController;
+import controller.Outcome;
+import dto.BookView;
 import view.components.BookCover;
 import view.components.CategoryStyle;
 import view.components.componentsUtils.CustomScrollBarUI;
@@ -43,16 +43,16 @@ public class BookDetailsDialog extends JDialog {
     private static final Font TEXT_FONT = new LocalFont("Nunito", FontWeight.REGULAR, 13f).getFont();
 
     private final Theme theme = ThemeManager.current();
-    private final Book book;
-    private final BookRepository repository;
+    private final BookView book;
+    private final BookController controller;
     private final Runnable onChange;
     private final int dialogWidth;
     private final int maxHeight;
 
-    public BookDetailsDialog(Window owner, Book book, BookRepository repository, Runnable onChange) {
+    public BookDetailsDialog(Window owner, BookView book, BookController controller, Runnable onChange) {
         super(owner, Dialog.ModalityType.APPLICATION_MODAL);
         this.book = book;
-        this.repository = repository;
+        this.controller = controller;
         this.onChange = onChange;
 
         boolean large = owner.getWidth() >= LARGE_LAYOUT_MIN_WINDOW_WIDTH;
@@ -194,25 +194,25 @@ public class BookDetailsDialog extends JDialog {
 
     // Coluna de informações, igual nos dois layouts
     private JPanel infoPanel(int width) {
-        String description = book.getDescription().isBlank() ? "No description provided." : book.getDescription();
+        String description = book.description().isBlank() ? "No description provided." : book.description();
 
         JPanel info = new JPanel();
         info.setOpaque(false);
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
 
-        info.add(text(book.getTitle(), TITLE_FONT, theme.text, width));
+        info.add(text(book.title(), TITLE_FONT, theme.text, width));
         info.add(Box.createVerticalStrut(2));
-        info.add(text(book.getAuthor().getName(), TEXT_FONT, theme.textMuted, width));
+        info.add(text(book.author(), TEXT_FONT, theme.textMuted, width));
         info.add(Box.createVerticalStrut(16));
         info.add(label("Description", LABEL_FONT, theme.text));
         info.add(Box.createVerticalStrut(6));
         info.add(descriptionBox(description, width));
         info.add(Box.createVerticalStrut(12));
-        info.add(row("Genre:", chip(book.getCategory().getDisplayName(), CategoryStyle.color(book.getCategory())), width));
+        info.add(row("Genre:", chip(book.category().getDisplayName(), CategoryStyle.color(book.category())), width));
         info.add(Box.createVerticalStrut(4));
-        info.add(row("Publisher:", null, width, book.getPublisher()));
+        info.add(row("Publisher:", null, width, book.publisher()));
         info.add(Box.createVerticalStrut(4));
-        info.add(row("ISBN:", null, width, String.valueOf(book.getIsbn())));
+        info.add(row("ISBN:", null, width, book.isbn()));
         info.add(Box.createVerticalGlue()); // empurra os botões para baixo
         info.add(Box.createVerticalStrut(16));
         info.add(actions());
@@ -315,9 +315,11 @@ public class BookDetailsDialog extends JDialog {
     }
 
     private JPanel actions() {
-        SubmitButton rent = new SubmitButton(book.isRented() ? "Return Book" : "Rent Book");
+        SubmitButton rent = new SubmitButton(book.rented() ? "Return Book" : "Rent Book");
         rent.setPreferredSize(new Dimension(0, 40));
-        rent.addActionListener(e -> toggleRent());
+        rent.addActionListener(e -> finish(book.rented()
+                ? controller.giveBack(book.isbn())
+                : controller.rent(book.isbn())));
 
         SecondaryButton delete = SecondaryButton.danger("Delete Book");
         delete.setPreferredSize(new Dimension(0, 40));
@@ -331,42 +333,21 @@ public class BookDetailsDialog extends JDialog {
         return panel;
     }
 
-    private void toggleRent() {
-        boolean wasRented = book.isRented();
-        boolean done;
-        try {
-            done = wasRented ? repository.unrent(book) : repository.rent(book);
-        } catch (DataAccessException e) {
-            ErrorDialog.display(this, e.getMessage());
-            return;
-        }
-        finish(done, wasRented ? "Book removed from your library" : "Book added to your library");
-    }
-
     private void confirmDelete() {
         AlertDialog.confirm(this, "Delete Book",
-                "Are you sure that you want to delete \"" + book.getTitle() + "\"?",
-                () -> {
-                    boolean removed;
-                    try {
-                        removed = repository.remove(book);
-                    } catch (DataAccessException e) {
-                        ErrorDialog.display(this, e.getMessage());
-                        return;
-                    }
-                    finish(removed, "Book deleted successfully");
-                });
+                "Are you sure that you want to delete \"" + book.title() + "\"?",
+                () -> finish(controller.delete(book.isbn())));
     }
 
-    // Sucesso (1 linha afetada) ou ausência (0 linhas): fecha, atualiza a página e informa
-    private void finish(boolean done, String successMessage) {
+    // Fecha o dialog, atualiza a página e mostra o resultado devolvido pelo controlador
+    private void finish(Outcome outcome) {
         Window owner = getOwner();
         dispose();
         onChange.run();
-        if (done) {
-            SuccessDialog.display(owner, successMessage);
+        if (outcome.success()) {
+            SuccessDialog.display(owner, outcome.message());
         } else {
-            ErrorDialog.display(owner, "This book no longer exists");
+            ErrorDialog.display(owner, outcome.message());
         }
     }
 

@@ -1,7 +1,7 @@
 package view.pages;
 
-import model.Book;
-import model.BookRepository;
+import controller.BookController;
+import dto.BookView;
 import model.Category;
 import view.components.sections.Section;
 import view.components.componentsUtils.BackgroundTask;
@@ -17,25 +17,25 @@ import java.util.List;
 public class ExplorePage extends Page {
     private static final int SIMULATED_DELAY_MS = 800; // simula uma operação demorada
 
-    private final BookRepository repository;
+    private final BookController controller;
 
-    public ExplorePage(BookRepository repository) {
-        this.repository = repository;
+    public ExplorePage(BookController controller) {
+        this.controller = controller;
     }
 
     @Override
     protected List<Section> createSections() {
         ExploreSection explore = new ExploreSection();
-        Section recent = BookRowSection.recentlyAdded(repository, this::render);
-        Section suggestion = BookRowSection.suggestion(repository, this::render);
-        BooksSection books = new BooksSection("Books", repository.findAll(), repository, this::render);
+        Section recent = BookRowSection.recentlyAdded(controller, this::render);
+        Section suggestion = BookRowSection.suggestion(controller, this::render);
+        BooksSection books = new BooksSection("Books", controller.all(), controller, this::render);
 
         // Com filtro ativo as seções de destaque somem; sem filtro, volta o acervo completo
         explore.setOnFilterChange(() -> {
             boolean active = explore.isFilterActive();
             recent.setVisible(!active);
             suggestion.setVisible(!active);
-            if (!active) books.showBooks(repository.findAll());
+            if (!active) books.showBooks(controller.all());
             revalidate();
             repaint();
         });
@@ -54,14 +54,12 @@ public class ExplorePage extends Page {
 
         explore.setSearching(true); // desabilita a ação durante a execução
 
-        new BackgroundTask<List<Book>>("book search",
+        new BackgroundTask<List<BookView>>("book search",
                 () -> {
                     Thread.sleep(SIMULATED_DELAY_MS);              // operação demorada simulada
-                    // TEMPORÁRIO, para testar a falha (descomente, rode e busque "fail"):
-                    // if ("fail".equalsIgnoreCase(text)) throw new IllegalStateException("Simulated failure");
-                    return repository.search(text, category);      // fora da EDT
+                    return controller.search(text, category);      // fora da EDT
                 },
-                found -> books.showBooks(explore.isFilterActive() ? found : repository.findAll()), // na EDT
+                found -> books.showBooks(explore.isFilterActive() ? found : controller.all()), // na EDT
                 error -> ErrorDialog.display(owner(), "Unable to complete the search"),
                 () -> explore.setSearching(false)                  // restaura em sucesso ou falha
         ).execute();
